@@ -130,6 +130,11 @@
       else if (perWeek >= 1) cadencePts = 18;
       else if (perWeek >= 0.25) cadencePts = 10;
       else cadencePts = 4;
+    } else if (commits.length === 1) {
+      // Not enough commits to measure a rate — fall back to recency
+      // so brand-new-but-active repos aren't scored as if they were dead.
+      const age = daysSince(commits[0]?.commit?.author?.date);
+      cadencePts = age < 30 ? 12 : 4;
     }
     score += cadencePts;
     factors.push({
@@ -208,9 +213,13 @@
   function renderBadge(state) {
     removeExistingBadge();
 
+    // GitHub has reshuffled this header markup before; try a few
+    // fallbacks before giving up and just appending to the page.
     const anchor =
       document.querySelector('[itemprop="name"]')?.closest("strong")
         ?.parentElement ||
+      document.querySelector("#repository-container-header h1") ||
+      document.querySelector('main h1') ||
       document.querySelector("h1") ||
       document.body;
 
@@ -250,8 +259,14 @@
 
   // ---- Main ----------------------------------------------------------------
 
+  // Bumped on every run() so a slow, superseded fetch can detect it's
+  // stale and avoid overwriting the badge for whatever repo loaded after it.
+  let runId = 0;
+
   async function run() {
     const repo = parseRepo();
+    const myRunId = ++runId;
+
     if (!repo) {
       removeExistingBadge();
       return;
@@ -264,25 +279,31 @@
       const signals = await cachedFetch(cacheKey, () =>
         fetchSignals(repo.owner, repo.repo)
       );
+      if (myRunId !== runId) return; // a newer navigation has since started
       const health = computeHealth(signals);
       renderBadge(health);
     } catch (e) {
+      if (myRunId !== runId) return;
       renderBadge({ error: e.message || "ERROR" });
     }
   }
 
-  // GitHub uses PJAX/turbo navigation — re-run on URL changes.
-  let lastPath = location.pathname;
-  run();
+  // GitHub uses PJAX/turbo navigation, which fires several overlapping
+  // signals for one page change. Dedup on pathname so we don't kick off
+  // redundant API calls (and burn the 60/hr unauthenticated budget) for
+  // the same navigation.
+  let lastPath = null;
+  function maybeRun() {
+    if (location.pathname === lastPath) return;
+    lastPath = location.pathname;
+    run();
+  }
 
-  const observer = new MutationObserver(() => {
-    if (location.pathname !== lastPath) {
-      lastPath = location.pathname;
-      run();
-    }
-  });
+  maybeRun();
+
+  const observer = new MutationObserver(maybeRun);
   observer.observe(document.body, { childList: true, subtree: true });
 
-  document.addEventListener("turbo:load", run);
-  document.addEventListener("pjax:end", run);
+  document.addEventListener("turbo:load", maybeRun);
+  document.addEventListener("pjax:end", maybeRun);
 })();
