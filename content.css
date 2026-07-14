@@ -1,0 +1,131 @@
+/* RepoHealth badge styles */
+
+#repohealth-badge.rh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  vertical-align: middle;
+  position: relative;
+  cursor: default;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+    sans-serif;
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+#repohealth-badge .rh-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+/* Color themes */
+#repohealth-badge.rh-green {
+  background: #dafbe1;
+  color: #1a7f37;
+  border-color: #b7f0c2;
+}
+#repohealth-badge.rh-green .rh-dot { background: #1a7f37; }
+
+#repohealth-badge.rh-amber {
+  background: #fff8c5;
+  color: #9a6700;
+  border-color: #f5e6a0;
+}
+#repohealth-badge.rh-amber .rh-dot { background: #d4a72c; }
+
+#repohealth-badge.rh-red {
+  background: #ffebe9;
+  color: #cf222e;
+  border-color: #ffcecb;
+}
+#repohealth-badge.rh-red .rh-dot { background: #cf222e; }
+
+#repohealth-badge.rh-gray,
+#repohealth-badge.rh-loading {
+  background: #eaeef2;
+  color: #57606a;
+  border-color: #d0d7de;
+}
+#repohealth-badge.rh-gray .rh-dot,
+#repohealth-badge.rh-loading .rh-dot { background: #8c959f; }
+
+/* Tooltip */
+#repohealth-badge .rh-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 9999;
+  min-width: 220px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #1f2328;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(31, 35, 40, 0.2);
+  font-weight: 400;
+  cursor: default;
+}
+
+#repohealth-badge:hover .rh-tooltip { display: block; }
+
+#repohealth-badge .rh-tooltip-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+#repohealth-badge .rh-tooltip ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#repohealth-badge .rh-tooltip li {
+  font-size: 12px;
+  padding: 3px 0 3px 18px;
+  position: relative;
+}
+
+#repohealth-badge .rh-tooltip li.rh-ok::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #1a7f37;
+  font-weight: 700;
+}
+#repohealth-badge .rh-tooltip li.rh-bad::before {
+  content: "✕";
+  position: absolute;
+  left: 0;
+  color: #cf222e;
+  font-weight: 700;
+}
+
+#repohealth-badge .rh-tooltip-foot {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #eaeef2;
+  font-size: 10px;
+  color: #8c959f;
+}
+
+/* Dark mode (GitHub sets data-color-mode / prefers-color-scheme) */
+@media (prefers-color-scheme: dark) {
+  #repohealth-badge .rh-tooltip {
+    background: #161b22;
+    color: #e6edf3;
+    border-color: #30363d;
+  }
+  #repohealth-badge .rh-tooltip-foot {
+    border-top-color: #30363d;
+  }
+}
