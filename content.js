@@ -42,6 +42,67 @@
     return `${(d / 365).toFixed(1)} yr ago`;
   }
 
+  // ---- Just for fun: mood + quips ------------------------------------------
+
+  // A little emoji "mood pet" that reflects the repo's health at a glance.
+  const MOOD = {
+    green: "😎",
+    amber: "😐",
+    red: "😴",
+    gray: "💀"
+  };
+
+  // Snarky one-liners, picked at random per repo. Purely for personality.
+  const QUIPS = {
+    green: [
+      "Shipping like there's no tomorrow.",
+      "This repo drinks its coffee black.",
+      "Maintainers still answer their DMs.",
+      "Green flags all the way down."
+    ],
+    amber: [
+      "Alive, but running on fumes.",
+      "Occasionally remembers it has issues.",
+      "Not dead — just resting its eyes.",
+      "Weekend-project energy."
+    ],
+    red: [
+      "Last seen touching grass.",
+      "The maintainer moved on. Peacefully.",
+      "Here lies a once-promising fork.",
+      "Bring your own life support."
+    ],
+    gray: [
+      "Officially retired. F to pay respects.",
+      "Archived. It had a good run.",
+      "This one's in the museum now."
+    ]
+  };
+
+  function pickQuip(color) {
+    const list = QUIPS[color] || QUIPS.gray;
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  // Rare little celebration when you stumble onto a near-perfect repo.
+  function confetti() {
+    const N = 80;
+    const wrap = document.createElement("div");
+    wrap.className = "rh-confetti";
+    const colors = ["#1a7f37", "#d4a72c", "#cf222e", "#0969da", "#8250df"];
+    for (let i = 0; i < N; i++) {
+      const p = document.createElement("i");
+      p.style.left = Math.random() * 100 + "vw";
+      p.style.background = colors[i % colors.length];
+      p.style.animationDelay = Math.random() * 0.6 + "s";
+      p.style.animationDuration = 1.8 + Math.random() * 1.2 + "s";
+      p.style.transform = `rotate(${Math.random() * 360}deg)`;
+      wrap.appendChild(p);
+    }
+    document.body.appendChild(wrap);
+    setTimeout(() => wrap.remove(), 3500);
+  }
+
   // ---- Data fetching (with light caching) ----------------------------------
 
   async function getJSON(url) {
@@ -228,15 +289,17 @@
     badge.className = `rh-badge rh-${state.color || "loading"}`;
 
     if (state.loading) {
-      badge.innerHTML = `<span class="rh-dot"></span><span class="rh-text">RepoHealth…</span>`;
+      badge.innerHTML = `<span class="rh-pill"><span class="rh-dot"></span><span class="rh-text">RepoHealth…</span></span>`;
     } else if (state.error) {
       const msg =
         state.error === "RATE_LIMIT"
           ? "GitHub API rate limit — try again shortly"
           : "RepoHealth: couldn't load";
-      badge.innerHTML = `<span class="rh-dot"></span><span class="rh-text">${msg}</span>`;
+      badge.innerHTML = `<span class="rh-pill"><span class="rh-dot"></span><span class="rh-text">${msg}</span></span>`;
     } else {
-      const { score, label, factors } = state;
+      const { score, label, color, factors } = state;
+      const mood = MOOD[color] || "";
+      const quip = pickQuip(color);
       const tips = factors
         .map(
           (f) =>
@@ -244,11 +307,12 @@
         )
         .join("");
       badge.innerHTML = `
-        <span class="rh-dot"></span>
-        <span class="rh-text"><strong>${label}</strong> · ${score}/100</span>
+        <span class="rh-mood rh-mood-${color}">${mood}</span>
+        <span class="rh-pill"><span class="rh-text"><strong>${label}</strong> · ${score}/100</span></span>
         <div class="rh-tooltip">
           <div class="rh-tooltip-title">Health signals</div>
           <ul>${tips}</ul>
+          <div class="rh-tooltip-quip">“${quip}”</div>
           <div class="rh-tooltip-foot">RepoHealth v0.1 · heuristic score</div>
         </div>
       `;
@@ -282,6 +346,8 @@
       if (myRunId !== runId) return; // a newer navigation has since started
       const health = computeHealth(signals);
       renderBadge(health);
+      // Rare treat: celebrate a near-flawless repo, once per page load.
+      if (health.score >= 95) confetti();
     } catch (e) {
       if (myRunId !== runId) return;
       renderBadge({ error: e.message || "ERROR" });

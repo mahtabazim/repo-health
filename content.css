@@ -1,22 +1,30 @@
 /* RepoHealth badge styles */
 
+/* Outer wrapper — transparent; holds the emoji + pill side by side */
 #repohealth-badge.rh-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-left: 10px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1;
   vertical-align: middle;
   position: relative;
   cursor: default;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
     sans-serif;
-  border: 1px solid transparent;
   user-select: none;
+}
+
+/* The colored pill itself */
+#repohealth-badge .rh-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid transparent;
 }
 
 #repohealth-badge .rh-dot {
@@ -26,30 +34,108 @@
   flex: 0 0 auto;
 }
 
+#repohealth-badge .rh-mood {
+  font-size: 18px;
+  line-height: 1;
+  flex: 0 0 auto;
+  position: relative;
+  display: inline-block;
+  transform-origin: center 80%;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+/* 😎 Active — a confident little bob */
+#repohealth-badge .rh-mood-green {
+  animation-name: rh-bob;
+  animation-duration: 1.8s;
+}
+@keyframes rh-bob {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-3px) rotate(-6deg); }
+}
+
+/* 😐 Moderate — an unsure side-to-side sway */
+#repohealth-badge .rh-mood-amber {
+  animation-name: rh-sway;
+  animation-duration: 2.4s;
+}
+@keyframes rh-sway {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+}
+
+/* 😴 Likely stale — slow sleepy breathing + a floating 💤 */
+#repohealth-badge .rh-mood-red {
+  animation-name: rh-breathe;
+  animation-duration: 3s;
+}
+@keyframes rh-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+#repohealth-badge .rh-mood-red::after {
+  content: "💤";
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  font-size: 9px;
+  animation: rh-float 3s ease-in-out infinite;
+}
+@keyframes rh-float {
+  0% { opacity: 0; transform: translate(0, 2px) scale(0.6); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: translate(4px, -8px) scale(1); }
+}
+
+/* 💀 Archived — an occasional bony rattle */
+#repohealth-badge .rh-mood-gray {
+  animation-name: rh-rattle;
+  animation-duration: 3.2s;
+}
+@keyframes rh-rattle {
+  0%, 82%, 100% { transform: translateX(0) rotate(0); }
+  86% { transform: translateX(-1.5px) rotate(-8deg); }
+  90% { transform: translateX(1.5px) rotate(8deg); }
+  94% { transform: translateX(-1.5px) rotate(-6deg); }
+  98% { transform: translateX(1px) rotate(4deg); }
+}
+
+/* A quick pop on hover, on top of the ambient loop */
+#repohealth-badge:hover .rh-mood {
+  animation-duration: 0.4s;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  #repohealth-badge .rh-mood { animation: none; }
+  #repohealth-badge .rh-mood-red::after { animation: none; opacity: 0.7; }
+}
+
 /* Color themes */
-#repohealth-badge.rh-green {
+#repohealth-badge.rh-green .rh-pill {
   background: #dafbe1;
   color: #1a7f37;
   border-color: #b7f0c2;
 }
 #repohealth-badge.rh-green .rh-dot { background: #1a7f37; }
 
-#repohealth-badge.rh-amber {
+#repohealth-badge.rh-amber .rh-pill {
   background: #fff8c5;
   color: #9a6700;
   border-color: #f5e6a0;
 }
 #repohealth-badge.rh-amber .rh-dot { background: #d4a72c; }
 
-#repohealth-badge.rh-red {
+#repohealth-badge.rh-red .rh-pill {
   background: #ffebe9;
   color: #cf222e;
   border-color: #ffcecb;
 }
 #repohealth-badge.rh-red .rh-dot { background: #cf222e; }
 
-#repohealth-badge.rh-gray,
-#repohealth-badge.rh-loading {
+#repohealth-badge.rh-gray .rh-pill,
+#repohealth-badge.rh-loading .rh-pill {
   background: #eaeef2;
   color: #57606a;
   border-color: #d0d7de;
@@ -110,12 +196,45 @@
   font-weight: 700;
 }
 
+#repohealth-badge .rh-tooltip-quip {
+  margin-top: 8px;
+  font-size: 11px;
+  font-style: italic;
+  color: #57606a;
+}
+
 #repohealth-badge .rh-tooltip-foot {
   margin-top: 8px;
   padding-top: 6px;
   border-top: 1px solid #eaeef2;
   font-size: 10px;
   color: #8c959f;
+}
+
+/* Confetti — a rare treat when a repo scores 95+ */
+.rh-confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483647;
+  overflow: hidden;
+}
+.rh-confetti i {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  opacity: 0.9;
+  animation-name: rh-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+}
+@keyframes rh-fall {
+  to {
+    top: 105vh;
+    opacity: 0;
+  }
 }
 
 /* Dark mode (GitHub sets data-color-mode / prefers-color-scheme) */
@@ -127,5 +246,8 @@
   }
   #repohealth-badge .rh-tooltip-foot {
     border-top-color: #30363d;
+  }
+  #repohealth-badge .rh-tooltip-quip {
+    color: #9198a1;
   }
 }
