@@ -154,13 +154,78 @@
       );
     } catch (e) { recentIssues = []; }
 
-    return { meta, commits, recentIssues };
+    const fork = await fetchForkComparison(meta);
+
+    return { meta, commits, recentIssues, fork };
+  }
+
+  // For a fork, how far has it drifted from the repo it came from?
+  // meta.parent is already embedded in the repo response, so this costs
+  // one extra call (the compare) rather than two.
+  async function fetchForkComparison(meta) {
+    if (!meta.fork || !meta.parent) return null;
+
+    const parent = meta.parent;
+    const [parentOwner, parentRepo] = parent.full_name.split("/");
+    const basehead =
+      `${parent.default_branch}...${meta.owner.login}:${meta.default_branch}`;
+
+    try {
+      const cmp = await getJSON(
+        `${API}/repos/${parentOwner}/${parentRepo}/compare/${basehead}`
+      );
+      return {
+        parent: parent.full_name,
+        parentArchived: !!parent.archived,
+        ahead: cmp.ahead_by || 0,
+        behind: cmp.behind_by || 0
+      };
+    } catch (e) {
+      // Compare 404s on empty repos and can time out on wildly diverged
+      // histories. The fork relationship is still worth surfacing.
+      return { parent: parent.full_name, parentArchived: !!parent.archived };
+    }
+  }
+
+  // Long-abandoned forks of busy repos run to seven figures behind, so
+  // these need separators to stay readable.
+  function fmtCount(n) {
+    return n.toLocaleString();
+  }
+
+  // Compact form for the badge chip, where space is tight.
+  function fmtCompact(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+    if (n >= 10000) return Math.round(n / 1000) + "k";
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+    return String(n);
+  }
+
+  // Human-readable drift summary + whether it counts as healthy.
+  function describeFork(fork) {
+    if (fork.ahead == null || fork.behind == null) {
+      return { text: `Fork of ${fork.parent}`, good: true };
+    }
+    const { ahead, behind } = fork;
+    let text;
+    if (!ahead && !behind) text = `In sync with ${fork.parent}`;
+    else if (ahead && behind)
+      text = `Diverged from ${fork.parent}: ${fmtCount(ahead)} ahead, ` +
+             `${fmtCount(behind)} behind`;
+    else if (behind)
+      text = `${fmtCount(behind)} commit${behind === 1 ? "" : "s"} behind ` +
+             `${fork.parent}`;
+    else
+      text = `${fmtCount(ahead)} commit${ahead === 1 ? "" : "s"} ahead of ` +
+             `${fork.parent}`;
+
+    return { text, good: behind <= 20, ahead, behind };
   }
 
   // ---- Scoring -------------------------------------------------------------
 
   // Returns { score: 0-100, label, color, factors: [...] }
-  function computeHealth({ meta, commits, recentIssues }) {
+  function computeHealth({ meta, commits, recentIssues, fork }) {
     const factors = [];
     let score = 0;
 
@@ -231,6 +296,17 @@
       factors.push({ label: "Archived by owner", good: false });
     }
 
+    // 4b. Fork drift — shown as a signal, but left out of the score so the
+    // 0-100 calibration keeps meaning "is this repo alive".
+    let forkInfo = null;
+    if (fork) {
+      forkInfo = describeFork(fork);
+      factors.push({ label: forkInfo.text, good: forkInfo.good });
+      if (fork.parentArchived) {
+        factors.push({ label: "Upstream is archived", good: false });
+      }
+    }
+
     // 5. Popularity as a weak positive (max 15 pts) — a proxy for "worth using".
     const stars = meta.stargazers_count || 0;
     let starPts;
@@ -261,7 +337,7 @@
       color = "red";
     }
 
-    return { score, label, color, factors };
+    return { score, label, color, factors, fork: forkInfo };
   }
 
   // ---- Rendering -----------------------------------------------------------
@@ -297,7 +373,7 @@
           : "RepoHealth: couldn't load";
       badge.innerHTML = `<span class="rh-pill"><span class="rh-dot"></span><span class="rh-text">${msg}</span></span>`;
     } else {
-      const { score, label, color, factors } = state;
+      const { score, label, color, factors, fork } = state;
       const mood = MOOD[color] || "";
       const quip = pickQuip(color);
       const tips = factors
@@ -306,9 +382,16 @@
             `<li class="${f.good ? "rh-ok" : "rh-bad"}">${f.label}</li>`
         )
         .join("");
+      // Drift is the whole point of looking at a fork, so surface it on the
+      // badge itself rather than burying it in the hover breakdown.
+      const forkChip =
+        fork && fork.behind
+          ? `<span class="rh-fork ${fork.good ? "" : "rh-fork-warn"}">🍴 ${fmtCompact(fork.behind)} behind</span>`
+          : "";
       badge.innerHTML = `
         <span class="rh-mood rh-mood-${color}">${mood}</span>
         <span class="rh-pill"><span class="rh-text"><strong>${label}</strong> · ${score}/100</span></span>
+        ${forkChip}
         <div class="rh-tooltip">
           <div class="rh-tooltip-title">Health signals</div>
           <ul>${tips}</ul>
